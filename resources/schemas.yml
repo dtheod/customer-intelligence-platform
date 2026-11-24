@@ -1,0 +1,37 @@
+resources:
+  schemas:
+    raw:
+      catalog_name: ${var.catalog}
+      name: raw
+      comment: Landing zone; holds the COFINFAD source volume.
+    bronze:
+      catalog_name: ${var.catalog}
+      name: bronze
+      comment: Source data as Delta, typed but otherwise untouched.
+    silver:
+      catalog_name: ${var.catalog}
+      name: silver
+      comment: Cleaned, deduplicated, conformed entities.
+    gold:
+      catalog_name: ${var.catalog}
+      name: gold
+      comment: Point-in-time customer features and labels.
+    ml:
+      catalog_name: ${var.catalog}
+      name: ml
+      comment: Registered models (churn, value, composite).
+    serving:
+      catalog_name: ${var.catalog}
+      name: serving
+      comment: Batch scores and request logs.
+    monitoring:
+      catalog_name: ${var.catalog}
+      name: monitoring
+      comment: Data-quality results and model drift metrics.
+
+  volumes:
+    cofinfad:
+      catalog_name: ${var.catalog}
+      schema_name: ${resources.schemas.raw.name}
+      name: cofinfad
+      comment: Raw COFINFAD files (Mendeley DOI 10.17632/mhb4zn3258.1, CC BY 4.0).

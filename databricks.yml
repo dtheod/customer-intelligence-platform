@@ -1,0 +1,29 @@
+bundle:
+  name: customer-intelligence-platform
+
+include:
+  - resources/*.yml
+  - resources/jobs/*.yml
+  - resources/serving/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog that holds all platform schemas (must already exist).
+    default: cip
+
+artifacts:
+  cip_wheel:
+    type: whl
+    build: uv build --wheel
+    path: .
+
+targets:
+  dev:
+    # Development mode prefixes resources (e.g. schemas -> dev_<user>_gold) and pauses schedules.
+    mode: development
+    default: true
+
+  staging:
+    mode: production
+    variables:
+      catalog: cip_staging
