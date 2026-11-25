@@ -1,0 +1,24 @@
+resources:
+  jobs:
+    ingest:
+      name: cip-ingest
+      description: Validate the raw COFINFAD CSVs in the volume and load them into bronze Delta tables.
+      max_concurrent_runs: 1
+      tags:
+        project: customer-intelligence-platform
+        layer: bronze
+
+      tasks:
+        - task_key: ingest
+          environment_key: default
+          python_wheel_task:
+            package_name: cip
+            entry_point: cip-ingest
+            parameters: ["--catalog", "${var.catalog}"]
+
+      environments:
+        - environment_key: default
+          spec:
+            environment_version: "3"
+            dependencies:
+              - ../../dist/*.whl

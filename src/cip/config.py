@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     schema_monitoring: str = "monitoring"
     raw_volume: str = "cofinfad"
 
+    # Used by the gateway; set via CIP_WAREHOUSE_ID (.env locally, ConfigMap on Kubernetes).
+    warehouse_id: str | None = None
+
     serving_endpoint: str = "customer-intelligence"
     model_alias: str = "champion"
 
