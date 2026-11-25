@@ -11,6 +11,9 @@ dependencies = [
     "pyyaml>=6.0",
 ]
 
+[project.scripts]
+cip-ingest = "cip.data.ingest:main"
+
 [project.optional-dependencies]
 ml = [
     "scikit-learn>=1.5",
@@ -57,6 +60,11 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "N", "RUF"]
+ignore = ["N812"] # `from pyspark.sql import functions as F` is the PySpark convention
+
+[tool.uv]
+# Match Databricks serverless runtimes; PySpark does not yet support pandas 3.
+constraint-dependencies = ["pandas<3"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
