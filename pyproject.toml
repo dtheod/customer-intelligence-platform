@@ -38,6 +38,12 @@ agent = [
 ]
 
 [dependency-groups]
+notebook = [
+    "ipykernel>=6.29",
+    "nbclient>=0.10",
+    "nbformat>=5.10",
+    "matplotlib>=3.9",
+]
 dev = [
     "pyspark>=3.5",
     "pytest>=8.0",

@@ -1,26 +1,48 @@
 from datetime import timedelta
 
+import pytest
+
 from cip.config import Settings
 
-
-def test_splits_are_strictly_ordered_and_disjoint():
-    t = Settings().temporal
-    ordered = [
-        *t.churn_train,
-        *t.churn_validation,
-        *t.churn_test,
-        t.monitoring_reference,
-        t.monitoring_current,
-    ]
-    assert ordered == sorted(ordered)
-    assert len(ordered) == len(set(ordered))
+T = Settings().temporal
 
 
-def test_training_label_windows_end_before_test_cutoff():
-    """No training label window may overlap the test period."""
-    t = Settings().temporal
-    horizon = timedelta(days=t.churn_horizon_days)
-    assert max(t.churn_train) + horizon <= t.churn_test[0]
+def _splits(prefix: str, horizon_days: int):
+    return [
+        getattr(T, f"{prefix}_train"),
+        getattr(T, f"{prefix}_validation"),
+        getattr(T, f"{prefix}_test"),
+    ], timedelta(days=horizon_days)
+
+
+@pytest.mark.parametrize(
+    ("prefix", "horizon"),
+    [("churn", T.churn_horizon_days), ("value", T.value_horizon_days)],
+)
+def test_label_windows_close_before_next_split_starts(prefix, horizon):
+    """No split may train on outcomes not yet observable at the next split's cutoff."""
+    (train, val, test), h = _splits(prefix, horizon)
+    assert max(train) + h <= min(val)
+    assert max(val) + h <= min(test)
+
+
+@pytest.mark.parametrize(
+    ("prefix", "horizon"),
+    [("churn", T.churn_horizon_days), ("value", T.value_horizon_days)],
+)
+def test_test_labels_are_fully_observed(prefix, horizon):
+    (_, _, test), h = _splits(prefix, horizon)
+    assert max(test) + h <= T.data_end
+
+
+def test_feature_lookback_mostly_inside_data():
+    """Earliest cutoff may lose at most a few days of lookback to the data start."""
+    earliest = min(T.churn_train + T.value_train)
+    assert earliest - timedelta(days=T.lookback_days) >= T.data_start - timedelta(days=7)
+
+
+def test_monitoring_follows_test_period():
+    assert max(T.churn_test) < T.monitoring_reference < T.monitoring_current <= T.data_end
 
 
 def test_qualified_names(monkeypatch):

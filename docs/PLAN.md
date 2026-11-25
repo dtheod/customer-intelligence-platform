@@ -2,7 +2,7 @@
 
 **Window:** Mon 23 Nov → Fri 4 Dec 2026 (10 working days)
 **Product question:** *Who is likely to leave, how valuable are they, why, and what should we do?*
-**Primary flow:** churn (30d) × value (90d) → retention priority → SHAP drivers → agent investigation → recommendation.
+**Primary flow:** dormancy risk (60d) × value (90d, COP) → retention priority → SHAP drivers → agent investigation → recommendation.
 **Secondary (stretch only):** anomaly detection.
 
 **Platform split:**
@@ -48,22 +48,24 @@ COFINFAD (Mendeley, DOI 10.17632/mhb4zn3258.1, CC BY 4.0):
 - The customer table ships a **`churn_probability`** field. That is someone else's model output → **never used as a feature or a label** (leakage).
 - Customer-level attributes (satisfaction, NPS, app engagement, product holdings) are most likely **end-of-period snapshots**, not time-stamped → leakage risk at earlier cutoffs.
 
+> **Updated 2026-11-25 after EDA** ([docs/data.md](data.md)): gate passed, but 92% of customers
+> idle for 30 days come back, so the target is **60-day dormancy**, not 30-day churn. Amounts are
+> COP; value = transaction volume (no revenue field).
+
 **Decisions this forces:**
-1. **Label from transactions:** `churned(c, t) = active(c, t) AND no transactions in (t, t+30d]`, where `active(c, t) = ≥1 transaction in (t−90d, t]`.
-2. **Features tagged `temporal` vs `static_snapshot`** in the feature contract. Churn model trained with and without snapshot features; gap reported as a leakage upper bound.
-3. **Monthly snapshots** (one row per customer per month-end cutoff):
+1. **Label from transactions:** `dormant(c, t) = active(c, t) AND no transactions in (t, t+60d]`, where `active(c, t) = ≥1 transaction in (t−90d, t]`. ~5.5% positive. Framed as dormancy / reactivation risk.
+2. **Features tagged** `behavioural` / `profile` / `dated_snapshot` (survey fields, null if surveyed after cutoff) / `static_snapshot`. Model trained with and without static snapshots. Full-year aggregates and provided scores never used.
+3. **Monthly snapshots**, label windows closed before the next split (source of truth: `cip.config.TemporalDesign`):
 
-   | Cutoffs | Role | Label window |
+   | Split | Dormancy cutoffs (60d) | Value cutoffs (90d) |
    |---|---|---|
-   | Apr → Jul 2023 | train | next 30d |
-   | Aug 2023 | validation | Sep |
-   | Sep 2023 | test | Oct |
-   | Oct 2023 | production month 1 — monitoring reference | Nov |
-   | Nov 2023 | production month 2 — drift / degradation | Dec |
+   | train | 31 Mar, 30 Apr, 31 May | 31 Mar |
+   | validation | 31 Jul | 30 Jun |
+   | test | 30 Sep | 30 Sep |
+   | monitoring reference | 31 Oct | – |
+   | monitoring current (no labels, like production) | 30 Nov | – |
 
-   Value target (next 90d) → value cutoffs end Sep 2023 (train Apr–Jun, val Jul, test Aug/Sep).
-
-**Day-1 gate:** if transactions lack usable timestamps or customer IDs don't join, stop and re-plan.
+**Day-1 gate:** passed (dated transactions, clean joins).
 
 ---
 
@@ -169,7 +171,7 @@ Each day ends with: tests green, a commit, a one-line entry in `docs/CHANGELOG.m
 - ✅ Registered churn model; experiment comparing ≥2 models.
 
 **D4 · Thu 26 Nov — Value model + decision layer**
-- Target: revenue proxy or transaction value over next 90d (decided D1).
+- Target: transaction volume (COP) over next 90d; 0.6% merchant-like accounts hold 44.5% of volume → Tweedie/log scale, metrics with and without them.
 - Baseline: trailing-90d value. Model: LightGBM Tweedie → `cip.ml.value_model@champion`.
 - `priority = P(churn) × E[value_90d]`; tiers by percentile (HIGH = top 10% expected loss).
 - Headline: "contacting top 10% by priority captures X% of value-at-risk vs Y% ranking by churn alone."
@@ -245,7 +247,7 @@ Each day ends with: tests green, a commit, a one-line entry in `docs/CHANGELOG.m
 
 ## 5. Open decisions
 
-1. **Workspace tier** — Free Edition (default plan) vs a trial/paid workspace. Paid enables online feature lookup, inference tables, Lakehouse Monitoring; plan works without them.
+1. ~~**Workspace tier**~~ — **Decided 2026-11-24: Premium workspace.** ⭐ items (Online Feature Store lookup, inference tables, Lakehouse Monitoring) are available; adopt them at D5/D8 if time allows, Free-Edition paths remain the fallback.
 2. **Agent LLM** — Claude via Anthropic API (default) vs routing through a Databricks external-model endpoint / AI Gateway (one more governed endpoint, more setup).
 3. **App layer host** — Kubernetes/Helm (default, matches target roles) vs Databricks Apps (simpler, but loses the K8s story).
-4. **Value target** — decided D1 from available fields.
+4. ~~**Value target**~~ — **Decided 2026-11-25:** next-90-day transaction volume (COP).
