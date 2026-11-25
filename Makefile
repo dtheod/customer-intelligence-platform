@@ -1,7 +1,8 @@
 .PHONY: install lint format test test-spark validate deploy-dev
 
-install:            ## Install all extras + dev tools into .venv
-	uv sync --all-extras
+install:            ## Install all extras + dev/notebook tools into .venv, register the notebook kernel
+	uv sync --all-extras --all-groups
+	uv run python -m ipykernel install --sys-prefix --name cip --display-name "cip (.venv)"
 
 lint:
 	uv run ruff check .
